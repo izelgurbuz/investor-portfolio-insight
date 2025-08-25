@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -66,8 +67,37 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
+
+def _pg_from_env():
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        u = urlparse(url)
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": u.path.lstrip("/"),
+            "USER": u.username,
+            "PASSWORD": u.password,
+            "HOST": u.hostname,
+            "PORT": u.port or "5432",
+        }
+    host = os.environ.get("POSTGRES_HOST")
+    if host:
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "finance"),
+            "USER": os.environ.get("POSTGRES_USER", "finance"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "finance"),
+            "HOST": host,
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        }
+    return None
+
+
+_pg = _pg_from_env()
+
 DATABASES = {
-    "default": {
+    "default": _pg
+    or {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
