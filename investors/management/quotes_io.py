@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from investors.management.utils.parser_and_financial_computations import (
@@ -52,16 +53,83 @@ async def _alpha_vantage_fetch(
     return asset_id, price, vol
 
 
-async def _yahoo_fetch(session, asset_id, symbol) -> Optional[Tuple[int, float, float]]:
+# Backoff
+async def _sleep_with_jitter(base_delay: float, attempt: int, cap: float) -> None:
+    # Exponential backoff with full jitter
+    raw = min(cap, base_delay * (2**attempt))
+    # jitter -> to desynchronize clients
+    delay = raw * random.uniform(0.5, 1.5)
+    await asyncio.sleep(delay)
+
+
+def _parse_retry_after(seconds_or_date: str) -> Optional[float]:
+    # If Yahoo sends it ..
+    try:
+        return float(seconds_or_date)
+    except Exception:
+        return None
+
+
+async def _yahoo_fetch(
+    session,
+    asset_id,
+    symbol,
+    max_retries: int = 4,
+    base_delay: float = 0.4,
+    cap_delay: float = 6.0,  # an upper bound so the wait doesn’t explode forever
+) -> Optional[Tuple[int, float, float]]:
     url = YAHOO_CHART_URL.format(symbol=symbol)
-    async with session.get(url) as resp:
-        resp.raise_for_status()
-        payload = await resp.json(loads=json.loads)
-        parsed = parse_yahoo_chart_payload(payload)
-        if parsed is None:
+
+    attempt = 0
+    while True:
+        try:
+            async with session.get(url) as resp:
+                # 429: too many requests
+                if resp.status == 429:
+                    ra = resp.headers.get("Retry-After")
+                    wait = _parse_retry_after(ra) if ra else None
+                    if wait is None:
+                        # fall back to jittered backoff
+                        if attempt >= max_retries:
+                            print("Out of attempts!")
+                            return None
+                        await _sleep_with_jitter(base_delay, attempt, cap_delay)
+                        attempt += 1
+                        continue
+                    else:
+                        await asyncio.sleep(wait)
+                        # do not increment attempt if provider guided us
+                        continue
+
+                # 5xx: transient server errors
+                if 500 <= resp.status < 600:
+                    if attempt >= max_retries:
+                        return None
+                    await _sleep_with_jitter(base_delay, attempt, cap_delay)
+                    attempt += 1
+                    continue
+
+                # Other 4xx raise for non retriable client errors
+                resp.raise_for_status()
+                payload = await resp.json(loads=json.loads)
+                parsed = parse_yahoo_chart_payload(payload)
+                if parsed is None:
+                    return None
+                price, vol = parsed
+                return asset_id, price, vol
+        except (
+            aiohttp.ClientConnectionError,
+            aiohttp.ServerTimeoutError,
+            asyncio.TimeoutError,
+        ):
+            if attempt >= max_retries:
+                return None
+            await _sleep_with_jitter(base_delay, attempt, cap_delay)
+            attempt += 1
+            continue
+        except aiohttp.ClientError:
+            # Non-retriable client errors (4xx other than 429)
             return None
-        price, vol = parsed
-        return asset_id, price, vol
 
 
 async def fetch_quotes_async(
