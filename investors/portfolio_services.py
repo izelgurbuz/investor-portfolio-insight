@@ -12,6 +12,12 @@ from django.db.models.functions import Coalesce, Sqrt
 
 
 def annotate_metrics(qs):
+    """
+    Portfolio metrics:
+      - asset_count: number of assets in the portfolio
+      - port_vol:    rough portfolio volatility proxy (sum of vol^2)^(1/2) / count
+      - sharpe_proxy: 1 / port_vol (only when port_vol > 0)
+    """
     qs = (
         qs.annotate(
             asset_count=Count(
