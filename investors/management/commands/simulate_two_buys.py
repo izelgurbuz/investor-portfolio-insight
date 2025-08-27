@@ -27,7 +27,7 @@ def buy_safe(portfolio_id: int, asset_id: int, qty: Decimal, price: Decimal) -> 
         )
         den = F("quantity") + Value(qty, output_field=DEC)
         new_avg = Case(
-            When(den=0, then=F("avg_price")),
+            When(quantity=0, then=Value(price, output_field=DEC)),
             default=ExpressionWrapper(num / den, output_field=DEC),
             output_field=DEC,
         )
@@ -62,7 +62,6 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         pid, aid = opts["portfolio_id"], opts["asset_id"]
         qty, price = Decimal(opts["qty"]), Decimal(opts["price"])
-
         Position.objects.get_or_create(portfolio_id=pid, asset_id=aid)
         Position.objects.filter(portfolio_id=pid, asset_id=aid).update(
             quantity=0, avg_price=0
