@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv()  # loads .env into environment
@@ -112,3 +113,74 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---- Celery / Redis ----
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_IMPORTS = ("investors.tasks",)
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TASK_ALWAYS_EAGER = False  # True only for unit tests if desired
+CELERY_TASK_TIME_LIMIT = 60
+CELERY_TASK_SOFT_TIME_LIMIT = 50
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# ---- OpenAPI / DRF schema ----
+INSTALLED_APPS += ["drf_spectacular"]
+REST_FRAMEWORK.update(
+    {
+        "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    }
+)
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Investor Portfolio API",
+    "DESCRIPTION": "Finance-grade backend with async fetch, analytics, bulk ops, and tasks.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+# ---- Logging (simple structured) ----
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "format": '{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "json"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "Europe/London")
+SCHEDULE_MODE = os.getenv("SCHEDULE_MODE", "interval")  # "interval" or "crontab"
+
+if SCHEDULE_MODE == "interval":
+    CELERY_BEAT_SCHEDULE = {
+        "recompute-interval": {
+            "task": "investors.tasks.nightly_recompute_all_portfolios",
+            "schedule": float(
+                os.getenv("RECOMPUTE_INTERVAL_SEC", "86400")
+            ),  # default 24h
+        },
+    }
+else:
+    CELERY_BEAT_SCHEDULE = {
+        "recompute-cron": {
+            "task": "investors.tasks.nightly_recompute_all_portfolios",
+            "schedule": crontab(
+                hour=int(os.getenv("RECOMPUTE_HOUR", "2")),
+                minute=int(os.getenv("RECOMPUTE_MINUTE", "0")),
+            ),
+        },
+    }

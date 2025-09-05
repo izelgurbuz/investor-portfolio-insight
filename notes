@@ -1,0 +1,8 @@
+python - <<'PY'
+import os, django
+os.environ['DJANGO_SETTINGS_MODULE']='core.settings'
+django.setup()
+from investors.tasks import nightly_recompute_all_portfolios
+res = nightly_recompute_all_portfolios.delay()
+print("queued fan-out task:", res.id)
+PY

@@ -21,6 +21,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
   adminer:
     image: adminer:4
@@ -30,6 +31,67 @@ services:
       - "8080:8080"
     environment:
       ADMINER_DEFAULT_SERVER: db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: finance_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  worker:
+    image: python:3.11-slim
+    container_name: finance_worker
+    depends_on:
+      - redis
+      - db
+    working_dir: /app
+    volumes:
+      - .:/app:delegated
+    environment:
+      # IMPORTANT: use service names visible inside docker network
+      DATABASE_URL: postgres://finance:finance@db:5432/finance
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_SETTINGS_MODULE: core.settings
+      PYTHONUNBUFFERED: "1"
+    command: >
+      bash -lc "
+      pip install -r requirements.txt &&
+      celery -A core worker -l info --concurrency=4 -E
+      "
+
+  flower:
+    image: mher/flower:2.0
+    container_name: finance_flower
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    restart: unless-stopped
+
+  beat:
+    image: python:3.11-slim
+    container_name: finance_beat
+    depends_on:
+      - redis
+      - db
+    working_dir: /app
+    volumes:
+      - .:/app:delegated
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgres://finance:finance@db:5432/finance}
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -lc "
+      pip install -r requirements.txt &&
+      celery -A core beat -l info
+      "
+    restart: unless-stopped
 
 volumes:
   pgdata:
