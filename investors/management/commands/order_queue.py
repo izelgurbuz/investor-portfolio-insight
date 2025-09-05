@@ -50,6 +50,12 @@ def worker(q: queue.Queue[OrderMsg]):
 
 
 class Command(BaseCommand):
+    """
+    It’s a mini version of what a trading system or stock broker backend might do
+    when handling many incoming orders at the same time.
+    queue.Queue ensures thread-safe communication between producer and worker threads
+    """
+
     help = "Apply buy orders concurrently via a simple in-process queue."
 
     def add_arguments(self, parser):
@@ -65,7 +71,7 @@ class Command(BaseCommand):
         N, W = opts["orders"], opts["workers"]
         qty, price = Decimal(opts["qty"]), Decimal(opts["price"])
 
-        q: queue.Queue[OrderMsg] = queue.Queue(maxsize=1000)
+        q: queue.Queue[OrderMsg] = queue.Queue(maxsize=1000)  # backpressure
         threads = [
             threading.Thread(target=worker, args=(q,), daemon=True) for _ in range(W)
         ]
