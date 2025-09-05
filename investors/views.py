@@ -20,14 +20,15 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce, Sqrt
 from django.http import HttpResponseNotModified
-from rest_framework import viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from investors.filters import PortfolioFilter
+from investors.metrics_services import annotate_metrics
 from investors.models import Asset, Portfolio
-from investors.portfolio_services import annotate_metrics
+from investors.serializers import PortfolioUpsertSerializer
 
 from .models import Investor, InvestorProfile
 from .serializers import (
@@ -110,7 +111,7 @@ class AssetAnalyticsView(APIView):
     def get(self, request):
         base = Asset.objects.all()
 
-        interesting = base.filter(Q(category="EQUITY") | Q(volatility__gt=0.30))
+        interesting = base.filter(Q(category="Equity") | Q(volatility__gt=0.30))
 
         # Risk band by annualized volatility thresholds (tune as needed)
         risk_band = Case(
@@ -204,3 +205,19 @@ class CachedAssetListView(APIView):
         resp["ETag"] = etag
         resp["Last-Modified"] = last_mod
         return resp
+
+
+class PortfolioBulkUpsertView(APIView):
+    permission_classes = [permissions.IsAdminUser]  # adjust if needed
+
+    def post(self, request):
+        if not isinstance(request.data, list):
+            return Response(
+                {"detail": "Expected a JSON list"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        ser = PortfolioUpsertSerializer(data=request.data, many=True)
+        ser.is_valid(raise_exception=True)
+        objs = ser.save()
+        return Response(
+            {"count": len(objs), "ids": [o.id for o in objs]}, status=status.HTTP_200_OK
+        )

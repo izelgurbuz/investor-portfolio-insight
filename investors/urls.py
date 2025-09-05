@@ -7,6 +7,7 @@ from .views import (
     CachedAssetListView,
     InvestorProfileViewSet,
     InvestorViewSet,
+    PortfolioBulkUpsertView,
     PortfolioViewSet,
 )
 
@@ -14,9 +15,14 @@ router = DefaultRouter()
 router.register("investors", InvestorViewSet)
 router.register("profiles", InvestorProfileViewSet)
 router.register("assets", AssetViewSet)
-router.register(r"portfolios", PortfolioViewSet, basename="portfolio")
+router.register("portfolios", PortfolioViewSet, basename="portfolio")
 
 urlpatterns = [
+    path(
+        "portfolios/bulk-upsert/",
+        PortfolioBulkUpsertView.as_view(),
+        name="portfolio-bulk-upsert",
+    ),
     path("assets/analytics/", AssetAnalyticsView.as_view(), name="asset-analytics"),
     path("assets/cached/", CachedAssetListView.as_view(), name="asset-cached-list"),
     path("", include(router.urls)),

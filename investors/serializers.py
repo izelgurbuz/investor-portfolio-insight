@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import Asset, Investor, InvestorProfile, Portfolio
@@ -50,3 +51,36 @@ class PortfolioSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Portfolio
         fields = ("id", "name", "asset_count", "port_vol", "sharpe_proxy")
+
+
+class PortfolioUpsertSerializer(serializers.ModelSerializer):
+    investor_email = serializers.EmailField(write_only=True)
+
+    class Meta:
+        model = Portfolio
+        fields = ("id", "name", "investor_email")
+        list_serializer_class = None  # set below
+
+    def validate(self, attrs):
+        if not attrs.get("name"):
+            raise serializers.ValidationError("name is required")
+        return attrs
+
+
+class PortfolioUpsertListSerializer(serializers.ListSerializer):
+    def create(self, validated_data):
+        # validated_data: list of dicts
+        created_or_updated = []
+        with transaction.atomic():
+            for item in validated_data:
+                email = item.pop("investor_email")
+                inv = Investor.objects.get(email=email)
+                obj, _ = Portfolio.objects.update_or_create(
+                    investor=inv, name=item["name"], defaults={}
+                )
+                created_or_updated.append(obj)
+        return created_or_updated
+
+
+# bind list serializer
+PortfolioUpsertSerializer.Meta.list_serializer_class = PortfolioUpsertListSerializer
