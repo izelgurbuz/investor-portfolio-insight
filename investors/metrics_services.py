@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 from django.db.models import (
     Case,
     Count,
@@ -10,6 +12,8 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce, Sqrt
 
+from investors.models import Portfolio
+
 
 def annotate_metrics(qs):
     """
@@ -18,7 +22,7 @@ def annotate_metrics(qs):
       - port_vol:    rough portfolio volatility proxy (sum of vol^2)^(1/2) / count
       - sharpe_proxy: 1 / port_vol (only when port_vol > 0)
     """
-    qs = (
+    qs_annotated = (
         qs.annotate(
             asset_count=Count(
                 "assets", distinct=True
@@ -56,4 +60,17 @@ def annotate_metrics(qs):
             )
         )
     )
-    return qs
+    return qs_annotated
+
+
+def compute_for_portfolio_id(portfolio_id: int) -> Optional[Dict[str, float]]:
+    qs = annotate_metrics(Portfolio.objects.filter(id=portfolio_id))
+    row = qs.values("port_vol", "sharpe_proxy").first()
+    if not row:
+        return None
+    return {
+        "port_vol": float(row["port_vol"]) if row["port_vol"] is not None else None,
+        "sharpe_proxy": float(row["sharpe_proxy"])
+        if row["sharpe_proxy"] is not None
+        else None,
+    }
