@@ -31,17 +31,6 @@ Containers – One command brings the whole system up
 
 
 
-| File                                     | What It Shows                                                          |
-| ---------------------------------------- | ---------------------------------------------------------------------- |
-| `scripts/threaded_fetch.py`              | Async + multi-threaded API fetching with retries & backoff             |
-| `scripts/update_asset_quotes_threads.py` | Bulk database updates with thread pools                                |
-| `scripts/compute_portfolio_var.py`       | Portfolio risk simulation (Monte Carlo)                                |
-| `scripts/cpu_risk.py`                    | Parallel CPU-bound calculations with multiprocessing                   |
-| `investors/tasks.py`                     | Distributed background jobs with Celery                                |
-| `investors/views.py`                     | Clean REST API design with Django REST Framework                       |
-| `docker-compose.yaml`                    | Cloud-native style service setup (API, DB, Redis, workers, monitoring) |
-
-
 | Cloud-Native Pattern                                 | Where It’s Practiced                               |
 | ---------------------------------------------------- | -------------------------------------------------- |
 | **Async I/O** – non-blocking external calls          | `scripts/threaded_fetch.py`                        |
@@ -70,6 +59,16 @@ Containers – One command brings the whole system up
          ┌──────▼──────┐
          │  Postgres    │
          └─────────────┘
+
+| File                                     | What It Shows                                                          |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| `scripts/threaded_fetch.py`              | Async + multi-threaded API fetching with retries & backoff             |
+| `scripts/update_asset_quotes_threads.py` | Bulk database updates with thread pools                                |
+| `scripts/compute_portfolio_var.py`       | Portfolio risk simulation (Monte Carlo)                                |
+| `scripts/cpu_risk.py`                    | Parallel CPU-bound calculations with multiprocessing                   |
+| `investors/tasks.py`                     | Distributed background jobs with Celery                                |
+| `investors/views.py`                     | Clean REST API design with Django REST Framework                       |
+| `docker-compose.yaml`                    | Cloud-native style service setup (API, DB, Redis, workers, monitoring) |
 
 
 ### 1. Clone
