@@ -28,21 +28,7 @@ Monitoring – Flower dashboard to track tasks
 
 Containers – One command brings the whole system up
 
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/investor_portfolio_insight.git
-cd investor_portfolio_insight
 
-# 2. Start services
-docker compose up --build
-
-# 3. Migrate & seed demo data
-export DATABASE_URL=postgres://finance:finance@127.0.0.1:5433/finance
-python manage.py migrate
-python manage.py seed_portfolio_demo --investors 3 --assets 20
-
-# 4. Explore
-# API:    http://localhost:8000/api/
-# Flower: http://localhost:5555/
 
 
 | File                                     | What It Shows                                                          |
@@ -84,4 +70,21 @@ python manage.py seed_portfolio_demo --investors 3 --assets 20
          ┌──────▼──────┐
          │  Postgres    │
          └─────────────┘
+
+
+### 1. Clone
+git clone https://github.com/YOUR_USERNAME/investor_portfolio_insight.git
+cd investor_portfolio_insight
+
+### 2. Start services
+docker compose up --build
+
+### 3. Migrate & seed demo data
+export DATABASE_URL=postgres://finance:finance@127.0.0.1:5433/finance
+python manage.py migrate
+python manage.py seed_portfolio_demo --investors 3 --assets 20
+
+### 4. Explore
+#### API:    http://localhost:8000/api/
+#### Flower: http://localhost:5555/
 
