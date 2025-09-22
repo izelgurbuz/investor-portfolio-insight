@@ -73,7 +73,7 @@ Containers – One command brings the whole system up
 
 
 ### 1. Clone
-git clone https://github.com/YOUR_USERNAME/investor_portfolio_insight.git
+git clone https://github.com/izelgurbuz/investor_portfolio_insight.git
 cd investor_portfolio_insight
 
 ### 2. Start services
