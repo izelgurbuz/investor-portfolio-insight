@@ -89,7 +89,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         return Response(ser.data)
 
     @action(detail=True, methods=["GET"])
-    def stats(self, reques, pk=None):
+    def stats(self, request, pk=None):
         obj = self.get_object()
         return Response(
             {

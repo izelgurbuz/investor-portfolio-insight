@@ -47,6 +47,7 @@ class PortfolioSummarySerializer(serializers.ModelSerializer):
     asset_count = serializers.IntegerField(read_only=True)
     port_vol = serializers.FloatField(read_only=True, allow_null=True)
     sharpe_proxy = serializers.FloatField(read_only=True, allow_null=True)
+    total_value = serializers.FloatField(read_only=True, allow_null=True)
 
     class Meta:
         model = Portfolio

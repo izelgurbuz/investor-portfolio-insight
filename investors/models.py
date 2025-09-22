@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class Investor(models.Model):
@@ -56,6 +57,8 @@ class Position(models.Model):
                 check=models.Q(quantity__gte=0), name="chk_position_quantity_nonneg"
             ),
         ]
+        #         added a (portfolio, asset) index to speed up queries that filter by both fields together, and a separate asset index to optimize queries that filter only by asset.
+        # Without these, the database would scan every row because it only has default indexes on primary keys, not on these filter fields.
         indexes = [
             models.Index(
                 fields=["portfolio", "asset"], name="idx_position_portfolio_asset"
@@ -65,3 +68,45 @@ class Position(models.Model):
 
     def __str__(self) -> str:
         return f"Position(p={self.portfolio_id}, a={self.asset_id}, q={self.quantity}, px={self.avg_price})"
+
+
+class EODPrice(models.Model):
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
+    date = models.DateField()
+    close = models.DecimalField(max_digits=18, decimal_places=6)
+    volume = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["asset", "date"], name="uniq_asset_date")
+        ]
+        indexes = [
+            models.Index(fields=["asset", "-date"]),
+            models.Index(fields=["date"]),
+        ]
+
+
+class Earnings(models.Model):
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
+    period_end = models.DateField()  # quarter end
+    eps = models.DecimalField(max_digits=18, decimal_places=6)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["asset", "period_end"], name="uniq_asset_period"
+            )
+        ]
+        indexes = [models.Index(fields=["asset", "-period_end"])]
+
+
+class PortfolioStat(models.Model):
+    portfolio = models.OneToOneField(
+        "Portfolio", on_delete=models.CASCADE, related_name="stat", primary_key=True
+    )
+    port_vol = models.FloatField(null=True, blank=True)
+    sharpe_proxy = models.FloatField(null=True, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self) -> str:
+        return f"PortfolioStat(p={self.portfolio_id}, vol={self.port_vol}, sharpe={self.sharpe_proxy})"

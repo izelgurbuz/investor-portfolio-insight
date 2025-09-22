@@ -59,6 +59,7 @@ def annotate_metrics(qs):
                 output_field=FloatField(),
             )
         )
+        .annotate(total_value=Sum(F("positions__quantity") * F("positions__avg_price")))
     )
     return qs_annotated
 
@@ -74,3 +75,34 @@ def compute_for_portfolio_id(portfolio_id: int) -> Optional[Dict[str, float]]:
         if row["sharpe_proxy"] is not None
         else None,
     }
+
+
+# def portfolio_market_value():
+#     portfolio_mv = Portfolio.objects.annotate(
+#         total_value=Sum(F("positions__qty") * F("positions__asset__price"))
+#     ).values("id", "name", "total_value")
+#     return portfolio_mv
+
+
+# def holder_concentration_per_asset():
+#     Asset.objects.annotate(
+#         holder=Count("portfolios", distinct=True, total_qty=Sum("positions__qty"))
+#     ).values("asset_id", "name", "holders", "total_qty")
+
+
+# def portfolio_weights(portfolio_id: int):
+#     Portfolio.objects.filter(id=portfolio_id).annotate(
+#         total_value=Sum(
+#             F("positions__qty") * F("positions__asset__price"),
+#             output_field=FloatField(),
+#         )
+#     ).annotate(
+#         value_of_this_row=ExpressionWrapper(
+#             F("positions__qty") * F("positions__asset__price"),
+#             output_field=FloatField(),
+#         )
+#     ).annotate(
+#         weight=ExpressionWrapper(
+#             F("value_of_this_row") / F("total_value"), output_field=FloatField()
+#         )
+#     )
