@@ -15,7 +15,7 @@ YAHOO_CHART_URL = (
 )
 ALPHAVANTAGE_URL = "https://www.alphavantage.co/query"
 
-ALPHAVANTAGE_API_KEY = "WTU2S8XTKLIY589G"
+ALPHAVANTAGE_API_KEY = "WTU2S8XTKLIY589G" #free tier key , they give this to anyone right away
 
 
 def _fake_network_fetch(asset_id: int, ticker: str) -> Tuple[int, float, float]:
